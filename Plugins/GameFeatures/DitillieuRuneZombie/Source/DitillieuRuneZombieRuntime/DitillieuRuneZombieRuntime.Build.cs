@@ -26,6 +26,7 @@ public class DitillieuRuneZombieRuntime : ModuleRules
 			new string[]
 			{
 				"Core",
+				"GameAI_Zombie",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -38,7 +39,10 @@ public class DitillieuRuneZombieRuntime : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"AIModule"
+				"GameplayTasks",
+				"NavigationSystem",
+				"AIModule",
+				"GameAI_Zombie"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
