@@ -44,6 +44,7 @@ void UStudentPerceptor_DitillieuRune::OnPerceptionUpdated(AActor* Actor, FAIStim
 	UBlackboardComponent* blackBoard = AIController->GetBlackboardComponent();
 	if (!blackBoard) return;
 	
+	blackBoard->SetValueAsBool(FName("SensedSomething"), true);
 	
 	FAISenseID DamageSenseID = UAISense::GetSenseID<UAISense_Damage>();
 	if (Stimulus.WasSuccessfullySensed() && Stimulus.Type == DamageSenseID)
