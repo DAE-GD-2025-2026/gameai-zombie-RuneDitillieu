@@ -23,4 +23,5 @@ public:
 
 	UFUNCTION()
 	virtual void OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	void RegisterZombie(AActor* Actor, APawn* OwnerPawn, UBlackboardComponent* BlackBoard);
 };

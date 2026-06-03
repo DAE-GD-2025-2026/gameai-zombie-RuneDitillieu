@@ -88,12 +88,22 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 					if (VisibleItems.Num() == 1)
 					{
 						blackBoard->SetValueAsBool(FName("SensedItem"), false);
+						
+						if (blackBoard->GetValueAsBool(FName("SensedDanger")) == false 
+							&& blackBoard->GetValueAsBool(FName("SensedVillage")) == false)
+						{
+							blackBoard->SetValueAsBool(FName("SensedSomething"), false);
+						}
 					}
 					
 					InventoryComponent->GrabItem(Idx, VisibleItems[0]);
 				}
 				++Idx;
 			}
+			
+			GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
+	FString::Printf(TEXT("Pickup completed")));
+			return EBTNodeResult::Succeeded;
 		}
 	}
 	

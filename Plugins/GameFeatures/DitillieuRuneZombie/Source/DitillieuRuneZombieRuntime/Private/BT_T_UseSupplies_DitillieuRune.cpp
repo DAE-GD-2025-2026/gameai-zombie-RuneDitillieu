@@ -40,11 +40,11 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	int Idx{ 0 };
 	for (ABaseItem* Item : Items)
 	{
-		if (Item->GetItemType() == EItemType::Medkit)
+		if (Item != nullptr && Item->GetItemType() == EItemType::Medkit)
 		{
 			Medkits.Add(Idx);
 		}
-		else if (Item->GetItemType() == EItemType::Food)
+		else if (Item != nullptr && Item->GetItemType() == EItemType::Food)
 		{
 			Food.Add(Idx);
 		}

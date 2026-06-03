@@ -41,55 +41,99 @@ void UStudentPerceptor_DitillieuRune::OnPerceptionUpdated(AActor* Actor, FAIStim
 	AAIController* AIController = Cast<AAIController>(OwnerPawn->GetController());
 	if (!AIController) return;
 	
-	UBlackboardComponent* blackBoard = AIController->GetBlackboardComponent();
-	if (!blackBoard) return;
+	UBlackboardComponent* BlackBoard = AIController->GetBlackboardComponent();
+	if (!BlackBoard) return;
 	
-	blackBoard->SetValueAsBool(FName("SensedSomething"), true);
+	BlackBoard->SetValueAsBool(FName("SensedSomething"), true);
 	
 	FAISenseID DamageSenseID = UAISense::GetSenseID<UAISense_Damage>();
 	if (Stimulus.WasSuccessfullySensed() && Stimulus.Type == DamageSenseID)
 	{
 		GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Red, 
 FString::Printf(TEXT("Sensing Damage")));
+		
+		if (APurgeZone * SensedPurgeZone = Cast<APurgeZone>(Actor))
+		{
+			BlackBoard->SetValueAsBool(FName("SensedDanger"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestPurgeZone"), SensedPurgeZone);
+		}
+		
+		RegisterZombie(Actor, OwnerPawn, BlackBoard);
 	}
 	
 	if (Stimulus.WasSuccessfullySensed())												
 	{
-		if (APurgeZone * sensedPurgeZone = Cast<APurgeZone>(Actor))
+		if (APurgeZone * SensedPurgeZone = Cast<APurgeZone>(Actor))
 		{
-			blackBoard->SetValueAsBool(FName("SensedDanger"), true);
-			blackBoard->SetValueAsObject(FName("ClosestPurgeZone"),sensedPurgeZone);
+			BlackBoard->SetValueAsBool(FName("SensedDanger"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestPurgeZone"), SensedPurgeZone);
 		}
 		
-		if (ABaseZombie* SensedZombie = Cast<ABaseZombie>(Actor))
+		RegisterZombie(Actor, OwnerPawn, BlackBoard);
+		
+		if (AFood* SensedFood = Cast<AFood>(Actor))
 		{
-			blackBoard->SetValueAsBool(FName("SensedDanger"), true);
+			BlackBoard->SetValueAsBool(FName("SensedItem"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestFood"), SensedFood);
+		}
+		
+		if (AMedkit* SensedMedkit = Cast<AMedkit>(Actor))
+		{
+			BlackBoard->SetValueAsBool(FName("SensedItem"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestMedkit"), SensedMedkit);
+		}
+		
+		if (APistol* SensedPistol = Cast<APistol>(Actor))
+		{
+			BlackBoard->SetValueAsBool(FName("SensedItem"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestPistol"), SensedPistol);
+		}
+		
+		if (AShotgun* SensedShotGun = Cast<AShotgun>(Actor))
+		{
+			BlackBoard->SetValueAsBool(FName("SensedItem"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestShotgun"), SensedShotGun);
+		}
+		
+		if (AHouse* SensedHouse = Cast<AHouse>(Actor)) 
+		{
+			BlackBoard->SetValueAsBool(FName("SensedVillage"), true);
+			BlackBoard->SetValueAsObject(FName("ClosestHouse"), SensedHouse);
+		}
+	}
+}
+
+void UStudentPerceptor_DitillieuRune::RegisterZombie(AActor* Actor, APawn* OwnerPawn, UBlackboardComponent* BlackBoard)
+{
+	if (ABaseZombie* SensedZombie = Cast<ABaseZombie>(Actor))
+		{
+			BlackBoard->SetValueAsBool(FName("SensedDanger"), true);
 			
-			ABaseZombie* zombie1 = Cast<ABaseZombie>(blackBoard->GetValueAsObject(FName(("ClosestZombie1"))));
-			ABaseZombie* zombie2 = Cast<ABaseZombie>(blackBoard->GetValueAsObject(FName(("ClosestZombie2"))));
-			ABaseZombie* zombie3 = Cast<ABaseZombie>(blackBoard->GetValueAsObject(FName(("ClosestZombie3"))));
+			ABaseZombie* zombie1 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName(("ClosestZombie1"))));
+			ABaseZombie* zombie2 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName(("ClosestZombie2"))));
+			ABaseZombie* zombie3 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName(("ClosestZombie3"))));
 			
 			// if not already aware of this zombie
 			if (SensedZombie != zombie1 && SensedZombie != zombie2 && SensedZombie != zombie3)
 			{
-				int amZombies{ blackBoard->GetValueAsInt(FName("AmountOfZombiesTracked")) };
+				int amZombies{ BlackBoard->GetValueAsInt(FName("AmountOfZombiesTracked")) };
 				if (amZombies < 3)
 				{
-					blackBoard->SetValueAsInt(FName("AmountOfZombiesTracked"), amZombies + 1);
+					BlackBoard->SetValueAsInt(FName("AmountOfZombiesTracked"), amZombies + 1);
 				}
 				
 				// if not already aware of 3 zombies, add this one
 				if (zombie1 == nullptr)
 				{
-					blackBoard->SetValueAsObject(FName("ClosestZombie1"), SensedZombie);
+					BlackBoard->SetValueAsObject(FName("ClosestZombie1"), SensedZombie);
 				}
 				else if (zombie2 == nullptr)
 				{
-					blackBoard->SetValueAsObject(FName("ClosestZombie2"), SensedZombie);
+					BlackBoard->SetValueAsObject(FName("ClosestZombie2"), SensedZombie);
 				}
 				else if (zombie3 == nullptr)
 				{
-					blackBoard->SetValueAsObject(FName("ClosestZombie3"), SensedZombie);
+					BlackBoard->SetValueAsObject(FName("ClosestZombie3"), SensedZombie);
 				}
 				else
 				{
@@ -103,50 +147,18 @@ FString::Printf(TEXT("Sensing Damage")));
 					{
 						if (dist1 > dist2 && dist1 > dist3)
 						{
-							blackBoard->SetValueAsObject(FName("ClosestZombie1"), SensedZombie);
+							BlackBoard->SetValueAsObject(FName("ClosestZombie1"), SensedZombie);
 						}
 						else if (dist2 > dist1 && dist2 > dist3)
 						{
-							blackBoard->SetValueAsObject(FName("ClosestZombie2"), SensedZombie);
+							BlackBoard->SetValueAsObject(FName("ClosestZombie2"), SensedZombie);
 						}
 						else if (dist3 > dist1 && dist3 > dist2)
 						{
-							blackBoard->SetValueAsObject(FName("ClosestZombie3"), SensedZombie);
+							BlackBoard->SetValueAsObject(FName("ClosestZombie3"), SensedZombie);
 						}
 					}
 				}
 			}
 		}
-	
-		
-		if (AFood* SensedFood = Cast<AFood>(Actor))
-		{
-			blackBoard->SetValueAsBool(FName("SensedItem"), true);
-			blackBoard->SetValueAsObject(FName("ClosestFood"), SensedFood);
-		}
-		
-		if (AMedkit* SensedMedkit = Cast<AMedkit>(Actor))
-		{
-			blackBoard->SetValueAsBool(FName("SensedItem"), true);
-			blackBoard->SetValueAsObject(FName("ClosestMedkit"), SensedMedkit);
-		}
-		
-		if (APistol* SensedPistol = Cast<APistol>(Actor))
-		{
-			blackBoard->SetValueAsBool(FName("SensedItem"), true);
-			blackBoard->SetValueAsObject(FName("ClosestPistol"), SensedPistol);
-		}
-		
-		if (AShotgun* SensedShotGun = Cast<AShotgun>(Actor))
-		{
-			blackBoard->SetValueAsBool(FName("SensedItem"), true);
-			blackBoard->SetValueAsObject(FName("ClosestShotgun"), SensedShotGun);
-		}
-		
-		if (AHouse* SensedHouse = Cast<AHouse>(Actor)) 
-		{
-			blackBoard->SetValueAsBool(FName("SensedVillage"), true);
-			blackBoard->SetValueAsObject(FName("ClosestHouse"), SensedHouse);
-		}
-	}
 }
