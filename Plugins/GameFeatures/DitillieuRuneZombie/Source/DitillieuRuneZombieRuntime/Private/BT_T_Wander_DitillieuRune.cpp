@@ -1,19 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "BT_Task_Wander_DitillieuRune.h"
+#include "BT_T_Wander_DitillieuRune.h"
 
 #include "AIController.h"
 #include "NavigationSystem.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Survivor/SurvivorPawn.h"
 
-UBT_Task_Wander_DitillieuRune::UBT_Task_Wander_DitillieuRune()
+UBT_T_Wander_DitillieuRune::UBT_T_Wander_DitillieuRune()
 {
 	NodeName = "Wander";
 }
 
-EBTNodeResult::Type UBT_Task_Wander_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
+EBTNodeResult::Type UBT_T_Wander_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
 	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;

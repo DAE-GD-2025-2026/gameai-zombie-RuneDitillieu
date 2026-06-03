@@ -4,19 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTTaskNode.h"
-#include "BT_Task_Wander_DitillieuRune.generated.h"
+#include "BT_T_Wander_DitillieuRune.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class DITILLIEURUNEZOMBIERUNTIME_API UBT_Task_Wander_DitillieuRune : public UBTTaskNode
+class DITILLIEURUNEZOMBIERUNTIME_API UBT_T_Wander_DitillieuRune : public UBTTaskNode
 {
 	GENERATED_BODY()
 	
 public:
-	UBT_Task_Wander_DitillieuRune();
-	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& root, uint8* nodeMemory) override;
+	UBT_T_Wander_DitillieuRune();
+	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory) override;
 	
 private:
 	float m_OffsetDistance{ 160.f };
