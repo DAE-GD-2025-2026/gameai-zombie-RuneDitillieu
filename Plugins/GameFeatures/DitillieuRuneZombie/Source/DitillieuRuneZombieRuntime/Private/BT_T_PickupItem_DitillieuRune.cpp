@@ -15,6 +15,7 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 {
 	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
 	FString::Printf(TEXT("Pickup")));
+	
 	// grab survivor
 	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
@@ -53,16 +54,16 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 
 	if (bFoundValidSpot)
 	{
-		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ProjectedLocation.Location, 50.0f, false, true, true, true, 0, true);
-        
-		// go to item
-		if (MoveResult == EPathFollowingRequestResult::Type::RequestSuccessful)
+		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ProjectedLocation.Location, 25.0f, false, true, true, true, 0, true);
+
+		if (MoveResult == EPathFollowingRequestResult::Failed)
 		{
-			return EBTNodeResult::InProgress;
+			return EBTNodeResult::Failed;
 		}
 		
-		// pickup item
-		if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+		// pickup item if close enough
+		if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+			|| (Survivor->GetActorLocation() - ProjectedLocation.Location).Length() < 50.f)
 		{
 			int Idx{ 0 };
 			for (auto Item : InventoryComponent->GetInventory())
@@ -101,8 +102,12 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 				++Idx;
 			}
 			
-			GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
-	FString::Printf(TEXT("Pickup completed")));
+			return EBTNodeResult::Succeeded;
+		}
+		
+		// go to item
+		if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+		{
 			return EBTNodeResult::Succeeded;
 		}
 	}
