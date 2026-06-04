@@ -27,7 +27,7 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	int HealthLoss{ HealthComponent->GetMaxHealth() - HealthComponent->GetHealth() };
 	float StaminaLoss{ StaminaComponent->GetMaxStamina() - StaminaComponent->GetCurrentStamina() };
 	
-	if (HealthLoss < 2 && StaminaLoss < 4.f) return EBTNodeResult::Failed;
+	if (HealthLoss < 2 && StaminaLoss < 2.f) return EBTNodeResult::Failed;
 	
 	
 	// grab medkits and food
