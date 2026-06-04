@@ -25,7 +25,7 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 	if (!BlackBoard) return EBTNodeResult::Failed;
 	
 	FVector FleeDirection{};
-	Survivor->StartRunning();
+	bool ShouldRun{ false };
 	
 	// flee from purgezone
 	APurgeZone* PurgeZone = Cast<APurgeZone>(BlackBoard->GetValueAsObject(FName("ClosestPurgeZone")));
@@ -34,7 +34,7 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 		FleeDirection = (Survivor->GetActorLocation() - PurgeZone->GetActorLocation());
 		float Dist{ float(FleeDirection.Length()) };
 		
-		if (Dist > 2000.f)
+		if (Dist > 1500.f)
 		{
 			BlackBoard->SetValueAsObject(FName("ClosestPurgeZone"), nullptr);
 			PurgeZone = nullptr;
@@ -50,12 +50,15 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 	int AmZombies{ BlackBoard->GetValueAsInt(FName("AmountOfZombiesTracked")) };
 	if (AmZombies > 0)
 	{
+		ShouldRun = true;
+		
 		TArray<ABaseZombie*> Zombies{};
 		Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie1"))));
 		Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie2"))));
 		Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie3"))));
 		
 		int Idx{ 0 };
+		float ClosestZombieDist{ 2000.f };
 		for (ABaseZombie* Zombie : Zombies)
 		{
 			if (Zombie == nullptr)
@@ -66,8 +69,12 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 			
 			FVector FleeDir = (Survivor->GetActorLocation() - Zombie->GetActorLocation());
 			float Dist{ float(FleeDir.Length()) };
+			if (Dist < ClosestZombieDist)
+			{
+				ClosestZombieDist = Dist;
+			}
 		
-			if (Dist > 1000.f)
+			if (Dist > 2000.f)
 			{
 				switch (Idx)
 				{
@@ -91,12 +98,19 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 			++Idx;
 		}
 		
+		// only sprint if a zombie is actually close
+		if (ClosestZombieDist > 500.f)
+		{
+			Survivor->StopRunning();
+			ShouldRun = false;
+		}
 		BlackBoard->SetValueAsInt(FName("AmountOfZombiesTracked"), AmZombies);
 	}
 	
 	if (AmZombies == 0 && PurgeZone == nullptr)
 	{
 		Survivor->StopRunning();
+		ShouldRun = false;
 		BlackBoard->SetValueAsBool(FName("SensedDanger"), false);
 		
 		if (BlackBoard->GetValueAsBool(FName("SensedItem")) == false 
@@ -111,6 +125,18 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 
 	if (pathPoints.Num() != 0)
 	{
+		float CurrentStamina{ Survivor->GetComponentByClass<UStaminaComponent>()->GetCurrentStamina() };
+		if (!Survivor->IsRunning() && ShouldRun && CurrentStamina >= 3)
+		{
+			Survivor->StartRunning();
+		}
+		
+		// save energy if almost depleted
+		if (Survivor->IsRunning() && CurrentStamina < 3)
+		{
+			Survivor->StopRunning();
+		}
+		
 		AIController->MoveToLocation(pathPoints[1], 50.0f, 
 			false, true, true, true, 0, true);
 		return EBTNodeResult::Succeeded; 
