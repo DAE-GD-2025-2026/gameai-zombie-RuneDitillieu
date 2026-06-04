@@ -94,9 +94,11 @@ void UBT_T_PickupItem_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp,
 				{
 				case EItemType::Medkit:
 					BlackBoard->SetValueAsObject(FName("ClosestMedkit"), nullptr);
+					BlackBoard->SetValueAsBool(FName("HasSupplies"), true);
 					break;
 				case EItemType::Food:
 					BlackBoard->SetValueAsObject(FName("ClosestFood"), nullptr);
+					BlackBoard->SetValueAsBool(FName("HasSupplies"), true);
 					break;
 				case EItemType::Pistol:
 					BlackBoard->SetValueAsObject(FName("ClosestPistol"), nullptr);

@@ -4,6 +4,7 @@
 #include "BT_T_UseSupplies_DitillieuRune.h"
 
 #include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Survivor/SurvivorPawn.h"
 #include "Common/InventoryComponent.h"
 #include "Common/HealthComponent.h"
@@ -11,6 +12,9 @@
 
 EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
+	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
+	FString::Printf(TEXT("UseSupplies")));
+	
 	// grab survivor
 	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
@@ -55,6 +59,7 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	// can't use any supplies if we don't have any
 	if (Medkits.Num() == 0 && Food.Num() == 0) return EBTNodeResult::Failed;
 		
+	int NumSupplies{ Medkits.Num() + Food.Num() };
 	// if we have a medkit, use the one that would heal the most without overflowing
 	if (Medkits.Num() > 0)
 	{
@@ -70,6 +75,7 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	
 		InventoryComponent->UseItem(BestMedkitIdx);
 		InventoryComponent->RemoveItem(BestMedkitIdx);
+		--NumSupplies;
 	}
 	
 	// if we have food, use the one that would refresh the most without overflowing
@@ -87,6 +93,12 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	
 		InventoryComponent->UseItem(BestFoodIdx);
 		InventoryComponent->RemoveItem(BestFoodIdx);
+		--NumSupplies;
+	}
+	
+	if (NumSupplies <= 0)
+	{
+		AIController->GetBlackboardComponent()->SetValueAsBool(FName("HasSupplies"), false);
 	}
 	
 	return EBTNodeResult::Succeeded;
