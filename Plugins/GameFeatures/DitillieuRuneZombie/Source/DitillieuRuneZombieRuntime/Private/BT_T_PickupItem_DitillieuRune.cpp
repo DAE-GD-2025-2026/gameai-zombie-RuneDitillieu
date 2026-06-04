@@ -11,34 +11,39 @@
 #include "NavigationSystem.h"
 #include "Navigation/PathFollowingComponent.h"
 
+UBT_T_PickupItem_DitillieuRune::UBT_T_PickupItem_DitillieuRune()
+{
+	bNotifyTick = true;
+}
+
 EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
 	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
 	FString::Printf(TEXT("Pickup")));
 	
 	// grab survivor
-	AAIController* AIController = OwnerComponent.GetAIOwner();
+	AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
 
-	ASurvivorPawn* Survivor = Cast<ASurvivorPawn>(AIController->GetPawn());
+	Survivor = Cast<ASurvivorPawn>(AIController->GetPawn());
 	if (!Survivor) return EBTNodeResult::Failed;
 	
 	// can't pickup if inventory is full
-	UInventoryComponent* InventoryComponent = Survivor->GetComponentByClass<UInventoryComponent>();
+	InventoryComponent = Survivor->GetComponentByClass<UInventoryComponent>();
 	if (!InventoryComponent->GetInventory().Contains(nullptr)) return EBTNodeResult::Failed;
 	
-	UBlackboardComponent* blackBoard = AIController->GetBlackboardComponent();
-	if (!blackBoard) return EBTNodeResult::Failed;
+	BlackBoard = AIController->GetBlackboardComponent();
+	if (!BlackBoard) return EBTNodeResult::Failed;
 	
 	// grab items we've seen
 	TArray<ABaseItem*> VisibleItems{};
-	ABaseItem* Medkit = Cast<ABaseItem>(blackBoard->GetValueAsObject(FName("ClosestMedkit")));
+	ABaseItem* Medkit = Cast<ABaseItem>(BlackBoard->GetValueAsObject(FName("ClosestMedkit")));
 	if (Medkit) VisibleItems.Add(Medkit);
-	ABaseItem* Food = Cast<ABaseItem>(blackBoard->GetValueAsObject(FName("ClosestFood")));
+	ABaseItem* Food = Cast<ABaseItem>(BlackBoard->GetValueAsObject(FName("ClosestFood")));
 	if (Food) VisibleItems.Add(Food);
-	ABaseItem* Pistol = Cast<ABaseItem>(blackBoard->GetValueAsObject(FName("ClosestPistol")));
+	ABaseItem* Pistol = Cast<ABaseItem>(BlackBoard->GetValueAsObject(FName("ClosestPistol")));
 	if (Pistol) VisibleItems.Add(Pistol);
-	ABaseItem* Shotgun = Cast<ABaseItem>(blackBoard->GetValueAsObject(FName("ClosestShotgun")));
+	ABaseItem* Shotgun = Cast<ABaseItem>(BlackBoard->GetValueAsObject(FName("ClosestShotgun")));
 	if (Shotgun) VisibleItems.Add(Shotgun);
 	
 	// can't pickup if we don't see anything
@@ -52,65 +57,75 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 	bool bFoundValidSpot = NavSys->ProjectPointToNavigation(VisibleItems[0]->GetActorLocation(), ProjectedLocation, FVector(200.f, 200.f, 200.f));
 	Survivor->StopRunning();
 
+	// if valid, set item to pickup in the coming frames
 	if (bFoundValidSpot)
 	{
-		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ProjectedLocation.Location, 25.0f, false, true, true, true, 0, true);
-
-		if (MoveResult == EPathFollowingRequestResult::Failed)
-		{
-			return EBTNodeResult::Failed;
-		}
-		
-		// pickup item if close enough
-		if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
-			|| (Survivor->GetActorLocation() - ProjectedLocation.Location).Length() < 50.f)
-		{
-			int Idx{ 0 };
-			for (auto Item : InventoryComponent->GetInventory())
-			{
-				if (Item == nullptr)
-				{
-					switch (VisibleItems[0]->GetItemType())
-					{
-					case EItemType::Medkit:
-						blackBoard->SetValueAsObject(FName("ClosestMedkit"), nullptr);
-						break;
-					case EItemType::Food:
-						blackBoard->SetValueAsObject(FName("ClosestFood"), nullptr);
-						break;
-					case EItemType::Pistol:
-						blackBoard->SetValueAsObject(FName("ClosestPistol"), nullptr);
-						break;
-					case EItemType::Shotgun:
-						blackBoard->SetValueAsObject(FName("ClosestShotgun"), nullptr);
-						break;
-					}
-					
-					if (VisibleItems.Num() == 1)
-					{
-						blackBoard->SetValueAsBool(FName("SensedItem"), false);
-						
-						if (blackBoard->GetValueAsBool(FName("SensedDanger")) == false 
-							&& blackBoard->GetValueAsBool(FName("SensedVillage")) == false)
-						{
-							blackBoard->SetValueAsBool(FName("SensedSomething"), false);
-						}
-					}
-					
-					InventoryComponent->GrabItem(Idx, VisibleItems[0]);
-				}
-				++Idx;
-			}
-			
-			return EBTNodeResult::Succeeded;
-		}
-		
-		// go to item
-		if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
-		{
-			return EBTNodeResult::Succeeded;
-		}
+		ItemToPickup = VisibleItems[0];
+		ItemLocation = ProjectedLocation;
+		NumItems = VisibleItems.Num();
+		return EBTNodeResult::InProgress;
 	}
 	
 	return EBTNodeResult::Failed;
+}
+
+void UBT_T_PickupItem_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+{
+	// move towards item
+	EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ItemLocation.Location, 
+		25.0f, false, true, true, true, 0, true);
+
+	if (MoveResult == EPathFollowingRequestResult::Failed)
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+	}
+		
+	// pickup item if close enough
+	if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+		|| (Survivor->GetActorLocation() - ItemLocation.Location).Length() < 50.f)
+	{
+		int Idx{ 0 };
+		for (auto Item : InventoryComponent->GetInventory())
+		{
+			if (Item == nullptr)
+			{
+				// remove item from blackboard
+				switch (ItemToPickup->GetItemType())
+				{
+				case EItemType::Medkit:
+					BlackBoard->SetValueAsObject(FName("ClosestMedkit"), nullptr);
+					break;
+				case EItemType::Food:
+					BlackBoard->SetValueAsObject(FName("ClosestFood"), nullptr);
+					break;
+				case EItemType::Pistol:
+					BlackBoard->SetValueAsObject(FName("ClosestPistol"), nullptr);
+					break;
+				case EItemType::Shotgun:
+					BlackBoard->SetValueAsObject(FName("ClosestShotgun"), nullptr);
+					break;
+				default:
+					break;
+				}
+					
+				// if this was the last registered item,
+				// unset blackboard values
+				if (NumItems == 1)
+				{
+					BlackBoard->SetValueAsBool(FName("SensedItem"), false);
+						
+					if (BlackBoard->GetValueAsBool(FName("SensedDanger")) == false 
+						&& BlackBoard->GetValueAsBool(FName("SensedVillage")) == false)
+					{
+						BlackBoard->SetValueAsBool(FName("SensedSomething"), false);
+					}
+				}
+					
+				InventoryComponent->GrabItem(Idx, ItemToPickup);
+			}
+			++Idx;
+		}
+			
+		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+	}
 }
