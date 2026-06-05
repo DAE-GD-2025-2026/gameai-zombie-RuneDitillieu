@@ -8,6 +8,8 @@
 #include "Survivor/SurvivorPawn.h"
 #include "PurgeZones/PurgeZone.h"
 #include "Zombies/BaseZombie.h"
+#include "NavigationSystem.h"
+#include "Navigation/PathFollowingComponent.h"
 
 EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
@@ -34,7 +36,7 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 		FleeDirection = (Survivor->GetActorLocation() - PurgeZone->GetActorLocation());
 		float Dist{ float(FleeDirection.Length()) };
 		
-		if (Dist > 1500.f)
+		if (Dist > 500.f)
 		{
 			BlackBoard->SetValueAsObject(FName("ClosestPurgeZone"), nullptr);
 			PurgeZone = nullptr;
@@ -74,7 +76,7 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 				ClosestZombieDist = Dist;
 			}
 		
-			if (Dist > 2000.f)
+			if (Dist > 1500.f)
 			{
 				switch (Idx)
 				{
@@ -121,9 +123,16 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 	}
 	
 	// flee
-	TArray<FVector> pathPoints = Survivor->CalculatePath(Survivor->GetActorLocation() + FleeDirection * 1000.f);
+	FleeDirection.Normalize();
+	
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()); //make sure not in wall
+	if (!NavSys) return EBTNodeResult::Failed;
 
-	if (pathPoints.Num() != 0)
+	FNavLocation ProjectedLocation;
+	bool bFoundValidSpot = NavSys->ProjectPointToNavigation(Survivor->GetActorLocation() + FleeDirection * 1000.f, 
+		ProjectedLocation, FVector(200.f, 200.f, 200.f));
+
+	if (bFoundValidSpot)
 	{
 		float CurrentStamina{ Survivor->GetComponentByClass<UStaminaComponent>()->GetCurrentStamina() };
 		if (!Survivor->IsRunning() && ShouldRun && CurrentStamina >= 3)
@@ -137,9 +146,13 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 			Survivor->StopRunning();
 		}
 		
-		AIController->MoveToLocation(pathPoints[1], 50.0f, 
-			false, true, true, true, 0, true);
-		return EBTNodeResult::Succeeded; 
+		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ProjectedLocation.Location,
+			50.0f, false, true, true, true, 0, true);
+        
+		if (MoveResult != EPathFollowingRequestResult::Type::Failed)
+		{
+			return EBTNodeResult::Succeeded;
+		}
 	}
 	
 	return EBTNodeResult::Failed;
