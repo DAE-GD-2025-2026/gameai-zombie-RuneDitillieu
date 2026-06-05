@@ -15,7 +15,6 @@ class DITILLIEURUNEZOMBIERUNTIME_API UBT_T_Wander_DitillieuRune : public UBTTask
 	GENERATED_BODY()
 	
 public:
-	UBT_T_Wander_DitillieuRune();
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory) override;
 	
 private:

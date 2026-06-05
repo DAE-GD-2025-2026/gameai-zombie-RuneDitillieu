@@ -8,13 +8,11 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "Survivor/SurvivorPawn.h"
 
-UBT_T_Wander_DitillieuRune::UBT_T_Wander_DitillieuRune()
-{
-	NodeName = "Wander";
-}
-
 EBTNodeResult::Type UBT_T_Wander_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
+	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
+	FString::Printf(TEXT("Wander")));
+	
 	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
 

@@ -58,7 +58,7 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	
 	// can't use any supplies if we don't have any
 	if (Medkits.Num() == 0 && Food.Num() == 0) return EBTNodeResult::Failed;
-		
+	
 	int NumSupplies{ Medkits.Num() + Food.Num() };
 	// if we have a medkit, use the one that would heal the most without overflowing
 	if (Medkits.Num() > 0)
@@ -73,9 +73,13 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 			}
 		}
 	
-		InventoryComponent->UseItem(BestMedkitIdx);
-		InventoryComponent->RemoveItem(BestMedkitIdx);
-		--NumSupplies;
+		// only use if it won't overflow
+		if (Items[BestMedkitIdx]->GetValue() <= HealthLoss)
+		{
+			InventoryComponent->UseItem(BestMedkitIdx);
+			InventoryComponent->RemoveItem(BestMedkitIdx);
+			--NumSupplies;
+		}
 	}
 	
 	// if we have food, use the one that would refresh the most without overflowing
@@ -91,9 +95,21 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 			}
 		}
 	
-		InventoryComponent->UseItem(BestFoodIdx);
-		InventoryComponent->RemoveItem(BestFoodIdx);
-		--NumSupplies;
+		// only use if it won't overflow
+		if (Items[BestFoodIdx]->GetValue() <= StaminaLoss)
+		{
+			InventoryComponent->UseItem(BestFoodIdx);
+			InventoryComponent->RemoveItem(BestFoodIdx);
+			--NumSupplies;
+		}
+	}
+	
+	if (HealthComponent->GetHealth() > 4 && StaminaComponent->GetCurrentStamina() > 4)
+	{
+		UBlackboardComponent* BlackBoard = AIController->GetBlackboardComponent();
+		if (!BlackBoard) return EBTNodeResult::Failed;
+		
+		BlackBoard->SetValueAsBool(FName("IsOnLifeSupport"), false);
 	}
 	
 	if (NumSupplies <= 0)
