@@ -39,4 +39,18 @@ void UBT_S_CheckHealth_DitillieuRune::TickNode(UBehaviorTreeComponent& OwnerComp
 	{
 		BlackBoard->SetValueAsBool(FName("IsOnLifeSupport"), true);
 	}
+	
+	if (!TookDamageLastTick && BlackBoard->GetValueAsBool(FName("TookDamage")) == true)
+	{
+		BlackBoard->SetValueAsBool(FName("TookDamage"), false);
+	}
+	
+	TookDamageLastTick = false;
+	
+	if (HealthComponent->GetHealth() < PrevHealth)
+	{
+		BlackBoard->SetValueAsBool(FName("TookDamage"), true);
+		PrevHealth = HealthComponent->GetHealth();
+		TookDamageLastTick = true;
+	}
 }

@@ -25,4 +25,7 @@ private:
 	UHealthComponent* HealthComponent{ nullptr };
 	UStaminaComponent* StaminaComponent{ nullptr };
 	UBlackboardComponent* BlackBoard{ nullptr };
+	
+	int PrevHealth{ 10 };
+	bool TookDamageLastTick{ false };
 };

@@ -130,7 +130,7 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 
 	FNavLocation ProjectedLocation;
 	bool bFoundValidSpot = NavSys->ProjectPointToNavigation(Survivor->GetActorLocation() + FleeDirection * 1000.f, 
-		ProjectedLocation, FVector(200.f, 200.f, 200.f));
+		ProjectedLocation, FVector(100.f, 100.f, 100.f));
 
 	if (bFoundValidSpot)
 	{
