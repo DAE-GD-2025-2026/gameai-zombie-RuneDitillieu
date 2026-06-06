@@ -17,7 +17,7 @@ UBT_T_Attack_DitillieuRune::UBT_T_Attack_DitillieuRune()
 
 EBTNodeResult::Type UBT_T_Attack_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
-	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
+	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
 	FString::Printf(TEXT("Attack")));
 	
 	// grab survivor
@@ -94,7 +94,7 @@ EBTNodeResult::Type UBT_T_Attack_DitillieuRune::ExecuteTask(UBehaviorTreeCompone
 	ClosestZombieLoc = GetClosestZombieLocation();
 	
 	// don't attack if closest zombie is too far to aim reliably
-	if ((ClosestZombieLoc - Survivor->GetActorLocation()).Length() > 300.f)
+	if ((ClosestZombieLoc - Survivor->GetActorLocation()).Length() > 500.f)
 	{
 		return EBTNodeResult::Failed;
 	}
@@ -127,9 +127,12 @@ FVector UBT_T_Attack_DitillieuRune::GetClosestZombieLocation() const
 
 void UBT_T_Attack_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
+	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
+	FString::Printf(TEXT("Attack")));
 	ClosestZombieLoc = GetClosestZombieLocation();
 	
-	const FVector2D DirToTarget{ ClosestZombieLoc - Survivor->GetActorLocation() };
+	FVector2D DirToTarget{ ClosestZombieLoc - Survivor->GetActorLocation() };
+	DirToTarget /= DirToTarget.Length();
 
 	const float AgentForwardAngle{ static_cast<float>(Survivor->GetActorRotation().Yaw) / 180.f * PI };
 	const float AngleToTarget{ static_cast<float>(atan2(DirToTarget.Y, DirToTarget.X))};
@@ -144,7 +147,7 @@ void UBT_T_Attack_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uin
 	
 	// convert to degrees
 	AngleDiff = AngleDiff / PI * 180.f;
-	if (AngleDiff < 5.f)
+	if (abs(AngleDiff) < 5.f)
 	{
 		// shoot & remove weapon if it has no ammo left
 		InventoryComponent->UseItem(WeaponToUseIdx);
@@ -153,12 +156,55 @@ void UBT_T_Attack_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uin
 			InventoryComponent->RemoveItem(WeaponToUseIdx);
 		}
 		
+		RemoveDeadZombies();
+		
 		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 	}
 	else
 	{
+		GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Magenta, 
+	FString::Printf(TEXT("Rotate")));
+		
 		// continue rotating
 		float DegreesToRotate{ AngleDiff / abs(AngleDiff) * DeltaSeconds * DegreesPerSec };
 		Survivor->AddActorWorldRotation(FRotator(0.0f, DegreesToRotate, 0.0f));
+	}
+}
+
+void UBT_T_Attack_DitillieuRune::RemoveDeadZombies() const
+{
+	// remove killed zombies from tracked list
+	ABaseZombie* Zombie1 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie1")));
+	ABaseZombie* Zombie2 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie2")));
+	ABaseZombie* Zombie3 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie3")));
+	
+	if (Zombie1 != nullptr && Zombie1->GetComponentByClass<UHealthComponent>()->GetHealth() <= 0)
+	{
+		Zombie1 = nullptr;
+		BlackBoard->SetValueAsObject(FName("ClosestZombie1"), nullptr);
+	}
+	if (Zombie2 != nullptr && Zombie2->GetComponentByClass<UHealthComponent>()->GetHealth() <= 0)
+	{
+		Zombie2 = nullptr;
+		BlackBoard->SetValueAsObject(FName("ClosestZombie2"), nullptr);
+	}
+	if (Zombie3 != nullptr && Zombie3->GetComponentByClass<UHealthComponent>()->GetHealth() <= 0)
+	{
+		Zombie3 = nullptr;
+		BlackBoard->SetValueAsObject(FName("ClosestZombie3"), nullptr);
+	}
+		
+	// set updated amount of zombies tracked
+	int AmZombies{ 0 };
+	if (Zombie1) AmZombies += 1;
+	if (Zombie2) AmZombies += 1;
+	if (Zombie3) AmZombies += 1;
+		
+	BlackBoard->SetValueAsInt(FName("AmountOfZombiesTracked"), AmZombies);
+	
+	// remove danger state if applicable
+	if (AmZombies <= 0 && !BlackBoard->GetValueAsObject(FName("ClosestPurgeZone")))
+	{
+		BlackBoard->SetValueAsBool(FName("SensedDanger"), false);
 	}
 }

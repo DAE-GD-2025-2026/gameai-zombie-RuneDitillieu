@@ -24,6 +24,7 @@ public:
 
 private:
 	FVector GetClosestZombieLocation() const;
+	void RemoveDeadZombies() const;
 	FVector ClosestZombieLoc{};
 	float DegreesPerSec{ 720.f };
 	
