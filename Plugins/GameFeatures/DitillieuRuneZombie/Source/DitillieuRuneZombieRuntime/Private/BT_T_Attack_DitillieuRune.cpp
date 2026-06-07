@@ -10,30 +10,25 @@
 #include "Items/BaseItem.h"
 #include "Zombies/BaseZombie.h"
 
-UBT_T_Attack_DitillieuRune::UBT_T_Attack_DitillieuRune()
-{
-	bNotifyTick = true;
-}
-
 EBTNodeResult::Type UBT_T_Attack_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
-	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
-	FString::Printf(TEXT("Attack")));
+	//GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
+	//FString::Printf(TEXT("Attack")));
 	
 	// grab survivor
-	AIController = OwnerComponent.GetAIOwner();
+	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
 
-	Survivor = Cast<ASurvivorPawn>(AIController->GetPawn());
+	ASurvivorPawn* Survivor = Cast<ASurvivorPawn>(AIController->GetPawn());
 	if (!Survivor) return EBTNodeResult::Failed;
 	
-	BlackBoard = AIController->GetBlackboardComponent();
+	UBlackboardComponent* BlackBoard = AIController->GetBlackboardComponent();
 	if (!BlackBoard) return EBTNodeResult::Failed;
 	
 	int AmZombies{ BlackBoard->GetValueAsInt(FName("AmountOfZombiesTracked")) };
 	if (AmZombies == 0) return EBTNodeResult::Failed;
 	
-	InventoryComponent = Survivor->GetComponentByClass<UInventoryComponent>();
+	UInventoryComponent* InventoryComponent = Survivor->GetComponentByClass<UInventoryComponent>();
 	auto Items{ InventoryComponent->GetInventory() };
 	
 	if (Items.IsEmpty()) return EBTNodeResult::Failed;
@@ -64,11 +59,13 @@ EBTNodeResult::Type UBT_T_Attack_DitillieuRune::ExecuteTask(UBehaviorTreeCompone
 	// if no weapons available, can't attack
 	if (Pistols.IsEmpty() && Shotguns.IsEmpty()) return EBTNodeResult::Failed;
 	
-	WeaponToUseIdx = Pistols.IsEmpty() ? Shotguns[0] : Pistols[0];
+	int WeaponToUseIdx = Pistols.IsEmpty() ? Shotguns[0] : Pistols[0];
 	
-	// if there's multiple enemies, or you only have a shotgun,
+	FVector ClosestZombieLoc = GetClosestZombieLocation(BlackBoard, Survivor);
+	
+	// if there's multiple enemies and they're nearby, or you only have a shotgun,
 	// use the shotgun with the least ammo
-	if (AmZombies > 1 || Pistols.IsEmpty())
+	if ((AmZombies > 1 && (ClosestZombieLoc - Survivor->GetActorLocation()).Length() < 150.f) || Pistols.IsEmpty())
 	{
 		for (int Shotgun : Shotguns)
 		{
@@ -91,18 +88,19 @@ EBTNodeResult::Type UBT_T_Attack_DitillieuRune::ExecuteTask(UBehaviorTreeCompone
 		}
 	}
 	
-	ClosestZombieLoc = GetClosestZombieLocation();
-	
-	// don't attack if closest zombie is too far to aim reliably
-	if ((ClosestZombieLoc - Survivor->GetActorLocation()).Length() > 500.f)
+	// shoot & remove weapon if it has no ammo left
+	InventoryComponent->UseItem(WeaponToUseIdx);
+	if (InventoryComponent->GetInventory()[WeaponToUseIdx]->GetValue() == 0)
 	{
-		return EBTNodeResult::Failed;
+		InventoryComponent->RemoveItem(WeaponToUseIdx);
 	}
+		
+	RemoveDeadZombies(BlackBoard);
 	
-	return EBTNodeResult::InProgress;
+	return EBTNodeResult::Succeeded;
 }
 
-FVector UBT_T_Attack_DitillieuRune::GetClosestZombieLocation() const
+FVector UBT_T_Attack_DitillieuRune::GetClosestZombieLocation(UBlackboardComponent* BlackBoard, ASurvivorPawn* Survivor) const
 {
 	TArray<ABaseZombie*> Zombies{};
 	Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie1"))));
@@ -125,53 +123,7 @@ FVector UBT_T_Attack_DitillieuRune::GetClosestZombieLocation() const
 	return LookAtDir;
 }
 
-void UBT_T_Attack_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
-{
-	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
-	FString::Printf(TEXT("Attack")));
-	ClosestZombieLoc = GetClosestZombieLocation();
-	
-	FVector2D DirToTarget{ ClosestZombieLoc - Survivor->GetActorLocation() };
-	DirToTarget /= DirToTarget.Length();
-
-	const float AgentForwardAngle{ static_cast<float>(Survivor->GetActorRotation().Yaw) / 180.f * PI };
-	const float AngleToTarget{ static_cast<float>(atan2(DirToTarget.Y, DirToTarget.X))};
-
-	float AngleDiff{ AngleToTarget - AgentForwardAngle };
-	if (abs(AngleDiff) < 0.01f)
-		AngleDiff = 0.f;
-	else if (AngleDiff >  PI)
-		AngleDiff -= 2 * PI;
-	else if (AngleDiff < -PI)
-		AngleDiff += 2 * PI;
-	
-	// convert to degrees
-	AngleDiff = AngleDiff / PI * 180.f;
-	if (abs(AngleDiff) < 5.f)
-	{
-		// shoot & remove weapon if it has no ammo left
-		InventoryComponent->UseItem(WeaponToUseIdx);
-		if (InventoryComponent->GetInventory()[WeaponToUseIdx]->GetValue() == 0)
-		{
-			InventoryComponent->RemoveItem(WeaponToUseIdx);
-		}
-		
-		RemoveDeadZombies();
-		
-		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Magenta, 
-	FString::Printf(TEXT("Rotate")));
-		
-		// continue rotating
-		float DegreesToRotate{ AngleDiff / abs(AngleDiff) * DeltaSeconds * DegreesPerSec };
-		Survivor->AddActorWorldRotation(FRotator(0.0f, DegreesToRotate, 0.0f));
-	}
-}
-
-void UBT_T_Attack_DitillieuRune::RemoveDeadZombies() const
+void UBT_T_Attack_DitillieuRune::RemoveDeadZombies(UBlackboardComponent* BlackBoard) const
 {
 	// remove killed zombies from tracked list
 	ABaseZombie* Zombie1 = Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie1")));
