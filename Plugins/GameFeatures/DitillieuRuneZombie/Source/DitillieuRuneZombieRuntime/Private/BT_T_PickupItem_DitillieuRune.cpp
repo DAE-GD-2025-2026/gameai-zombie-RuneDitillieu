@@ -21,8 +21,6 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
 	FString::Printf(TEXT("Pickup")));
 	
-	//UE_LOG(LogTemp, Warning, TEXT("Start pickup"));
-	
 	// grab survivor
 	AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
@@ -164,14 +162,17 @@ ABaseItem* UBT_T_PickupItem_DitillieuRune::GetBestItemToPickup(TArray<ABaseItem*
 		}
 	}
 	
-	Idx = -1;
-	for (auto* Item : KnownItems)
+	if (InventoryComponent->GetInventory().Contains(nullptr))
 	{
-		++Idx;
-		if (AmItemsPerType[Idx] < 2)
+		Idx = -1;
+		for (auto* Item : KnownItems)
 		{
-			BestItem = Item;
-			return BestItem;
+			++Idx;
+			if (AmItemsPerType[Idx] < 2)
+			{
+				BestItem = Item;
+				return BestItem;
+			}
 		}
 	}
 	
