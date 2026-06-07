@@ -18,6 +18,7 @@ void UBT_S_CheckHealth_DitillieuRune::TickNode(UBehaviorTreeComponent& OwnerComp
 {
 	Super::TickNode(OwnerComp, NodeMemory, DeltaSeconds);
 	
+	// grab need components
 	if (BlackBoard == nullptr)
 	{
 		AAIController* AIController{ OwnerComp.GetAIOwner() };
@@ -35,11 +36,14 @@ void UBT_S_CheckHealth_DitillieuRune::TickNode(UBehaviorTreeComponent& OwnerComp
 	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
 	FString::Printf(TEXT("check")));
 	
+	// set boolean when low on health or stamina
 	if (HealthComponent->GetHealth() < 5 || StaminaComponent->GetCurrentStamina() < 4.5f)
 	{
 		BlackBoard->SetValueAsBool(FName("IsOnLifeSupport"), true);
 	}
 	
+	// every other tick (1,5 sec), reset the damage bool
+	// if not found by then, ignore damage again
 	if (!TookDamageLastTick && BlackBoard->GetValueAsBool(FName("TookDamage")) == true)
 	{
 		BlackBoard->SetValueAsBool(FName("TookDamage"), false);
@@ -47,6 +51,7 @@ void UBT_S_CheckHealth_DitillieuRune::TickNode(UBehaviorTreeComponent& OwnerComp
 	
 	TookDamageLastTick = false;
 	
+	// set boolean when taking damage from an unknown source
 	if (HealthComponent->GetHealth() < PrevHealth)
 	{
 		BlackBoard->SetValueAsBool(FName("TookDamage"), true);
