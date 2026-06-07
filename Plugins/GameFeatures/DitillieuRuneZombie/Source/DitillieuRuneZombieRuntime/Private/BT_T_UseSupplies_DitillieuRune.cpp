@@ -22,7 +22,6 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	ASurvivorPawn* Survivor = Cast<ASurvivorPawn>(AIController->GetPawn());
 	if (!Survivor) return EBTNodeResult::Failed;
 	
-	
 	// grab components
 	UHealthComponent* HealthComponent = Survivor->GetComponentByClass<UHealthComponent>();
 	UStaminaComponent* StaminaComponent = Survivor->GetComponentByClass<UStaminaComponent>();
@@ -40,69 +39,16 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	auto Items = InventoryComponent->GetInventory();
 	TArray<int> Medkits{};
 	TArray<int> Food{};
-	
-	int Idx{ 0 };
-	for (ABaseItem* Item : Items)
-	{
-		if (Item != nullptr && Item->GetItemType() == EItemType::Medkit)
-		{
-			Medkits.Add(Idx);
-		}
-		else if (Item != nullptr && Item->GetItemType() == EItemType::Food)
-		{
-			Food.Add(Idx);
-		}
-		
-		++Idx;
-	}
+	GetFoodAndMedkits(Items, Medkits, Food);
 	
 	// can't use any supplies if we don't have any
 	if (Medkits.Num() == 0 && Food.Num() == 0) return EBTNodeResult::Failed;
 	
 	int NumSupplies{ Medkits.Num() + Food.Num() };
-	// if we have a medkit, use the one that would heal the most without overflowing
-	if (Medkits.Num() > 0)
-	{
-		int BestMedkitIdx{ Medkits[0] };
-		for (int MedkitIdx : Medkits)
-		{
-			int Value{ Items[MedkitIdx]->GetValue() };
-			if (Value <= HealthLoss && Value > Items[BestMedkitIdx]->GetValue())
-			{
-				BestMedkitIdx = MedkitIdx;
-			}
-		}
 	
-		// only use if it won't overflow
-		if (Items[BestMedkitIdx]->GetValue() <= HealthLoss)
-		{
-			InventoryComponent->UseItem(BestMedkitIdx);
-			InventoryComponent->RemoveItem(BestMedkitIdx);
-			--NumSupplies;
-		}
-	}
-	
-	// if we have food, use the one that would refresh the most without overflowing
-	if (Food.Num() > 0)
-	{
-		int BestFoodIdx{ Food[0] };
-		for (int FoodIdx : Food)
-		{
-			int Value{ Items[FoodIdx]->GetValue() };
-			if (Value <= HealthLoss && Value > Items[BestFoodIdx]->GetValue())
-			{
-				BestFoodIdx = FoodIdx;
-			}
-		}
-	
-		// only use if it won't overflow
-		if (Items[BestFoodIdx]->GetValue() <= StaminaLoss)
-		{
-			InventoryComponent->UseItem(BestFoodIdx);
-			InventoryComponent->RemoveItem(BestFoodIdx);
-			--NumSupplies;
-		}
-	}
+	// if we have supplies, use the one that would replenish the most without overflowing
+	UseBestSupply(Items, Medkits, HealthLoss, NumSupplies, InventoryComponent);
+	UseBestSupply(Items, Food, StaminaLoss, NumSupplies, InventoryComponent);
 	
 	if (HealthComponent->GetHealth() > 4 && StaminaComponent->GetCurrentStamina() > 4)
 	{
@@ -118,4 +64,47 @@ EBTNodeResult::Type UBT_T_UseSupplies_DitillieuRune::ExecuteTask(UBehaviorTreeCo
 	}
 	
 	return EBTNodeResult::Succeeded;
+}
+
+void UBT_T_UseSupplies_DitillieuRune::GetFoodAndMedkits(const TArray<ABaseItem*>& Items, TArray<int>& Medkits, TArray<int>& Food)
+{
+	int Idx{ 0 };
+	for (ABaseItem* Item : Items)
+	{
+		if (Item != nullptr && Item->GetItemType() == EItemType::Medkit)
+		{
+			Medkits.Add(Idx);
+		}
+		else if (Item != nullptr && Item->GetItemType() == EItemType::Food)
+		{
+			Food.Add(Idx);
+		}
+		
+		++Idx;
+	}
+}
+
+void UBT_T_UseSupplies_DitillieuRune::UseBestSupply(const TArray<ABaseItem*>& Items, TArray<int>& Supplies,
+	int StatLoss, int& NumSupplies, UInventoryComponent* InventoryComponent)
+{
+	if (Supplies.Num() > 0)
+	{
+		int BestSupplyIdx{ Supplies[0] };
+		for (int SupplyIdx : Supplies)
+		{
+			int Value{ Items[SupplyIdx]->GetValue() };
+			if (Value <= StatLoss && Value > Items[BestSupplyIdx]->GetValue())
+			{
+				BestSupplyIdx = SupplyIdx;
+			}
+		}
+	
+		// only use if it won't overflow
+		if (Items[BestSupplyIdx]->GetValue() <= StatLoss)
+		{
+			InventoryComponent->UseItem(BestSupplyIdx);
+			InventoryComponent->RemoveItem(BestSupplyIdx);
+			--NumSupplies;
+		}
+	}
 }
