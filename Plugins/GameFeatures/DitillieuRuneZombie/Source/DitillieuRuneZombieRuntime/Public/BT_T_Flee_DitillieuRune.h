@@ -6,6 +6,7 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "BT_T_Flee_DitillieuRune.generated.h"
 
+class ASurvivorPawn;
 /**
  * 
  */
@@ -16,4 +17,11 @@ class DITILLIEURUNEZOMBIERUNTIME_API UBT_T_Flee_DitillieuRune : public UBTTaskNo
 	
 public:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory) override;
+	
+private:
+	void UpdateBlackboardValues(UBlackboardComponent* BlackBoard) const;
+	FVector FleeFromZombies(UBlackboardComponent* BlackBoard, ASurvivorPawn* Survivor);
+	FVector FleeFromPurgeZone(UBlackboardComponent* BlackBoard, ASurvivorPawn* Survivor);
+	
+	bool ShouldRun{ false };
 };

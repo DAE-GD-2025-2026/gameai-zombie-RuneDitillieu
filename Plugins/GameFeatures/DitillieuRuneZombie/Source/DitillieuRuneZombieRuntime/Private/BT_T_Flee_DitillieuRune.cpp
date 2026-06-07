@@ -27,10 +27,61 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 	if (!BlackBoard) return EBTNodeResult::Failed;
 	
 	FVector FleeDirection{};
-	bool ShouldRun{ false };
+	ShouldRun = false;
 	
-	// flee from purgezone
+	// calculate flee direction
+	FleeDirection += FleeFromPurgeZone(BlackBoard, Survivor);
+	FleeDirection += FleeFromZombies(BlackBoard, Survivor);
+	
+	// reset blackboard vals
+	if (BlackBoard->GetValueAsInt(FName("AmountOfZombiesTracked")) == 0 && BlackBoard->GetValueAsObject(FName("ClosestPurgeZone")) == nullptr)
+	{
+		Survivor->StopRunning();
+		ShouldRun = false;
+		
+		UpdateBlackboardValues(BlackBoard);
+	}
+	
+	// flee
+	FleeDirection.Normalize();
+	
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()); //make sure not in wall
+	if (!NavSys) return EBTNodeResult::Failed;
+
+	FNavLocation ProjectedLocation;
+	bool bFoundValidSpot = NavSys->ProjectPointToNavigation(Survivor->GetActorLocation() + FleeDirection * 1000.f, 
+		ProjectedLocation, FVector(100.f, 100.f, 100.f));
+
+	if (bFoundValidSpot)
+	{
+		float CurrentStamina{ Survivor->GetComponentByClass<UStaminaComponent>()->GetCurrentStamina() };
+		if (!Survivor->IsRunning() && ShouldRun && CurrentStamina >= 3)
+		{
+			Survivor->StartRunning();
+		}
+		
+		// save energy if almost depleted
+		if (Survivor->IsRunning() && CurrentStamina < 3)
+		{
+			Survivor->StopRunning();
+		}
+		
+		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ProjectedLocation.Location,
+			50.0f, false, true, true, true, 0, true);
+        
+		if (MoveResult != EPathFollowingRequestResult::Type::Failed)
+		{
+			return EBTNodeResult::Succeeded;
+		}
+	}
+	
+	return EBTNodeResult::Failed;
+}
+
+FVector UBT_T_Flee_DitillieuRune::FleeFromPurgeZone(UBlackboardComponent* BlackBoard, ASurvivorPawn* Survivor)
+{
 	APurgeZone* PurgeZone = Cast<APurgeZone>(BlackBoard->GetValueAsObject(FName("ClosestPurgeZone")));
+	FVector FleeDirection{};
 	if (PurgeZone)
 	{
 		FleeDirection = (Survivor->GetActorLocation() - PurgeZone->GetActorLocation());
@@ -48,7 +99,13 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 		}
 	}
 	
-	// flee from zombies
+	return FleeDirection;
+}
+
+FVector UBT_T_Flee_DitillieuRune::FleeFromZombies(UBlackboardComponent* BlackBoard, ASurvivorPawn* Survivor)
+{
+	FVector FleeDirection{};
+	
 	int AmZombies{ BlackBoard->GetValueAsInt(FName("AmountOfZombiesTracked")) };
 	if (AmZombies > 0)
 	{
@@ -106,54 +163,20 @@ EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent
 			Survivor->StopRunning();
 			ShouldRun = false;
 		}
+		
 		BlackBoard->SetValueAsInt(FName("AmountOfZombiesTracked"), AmZombies);
 	}
 	
-	if (AmZombies == 0 && PurgeZone == nullptr)
-	{
-		Survivor->StopRunning();
-		ShouldRun = false;
-		BlackBoard->SetValueAsBool(FName("SensedDanger"), false);
-		
-		if (BlackBoard->GetValueAsBool(FName("SensedItem")) == false 
-			&& BlackBoard->GetValueAsBool(FName("SensedVillage")) == false)
-		{
-			BlackBoard->SetValueAsBool(FName("SensedSomething"), false);
-		}
-	}
-	
-	// flee
-	FleeDirection.Normalize();
-	
-	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()); //make sure not in wall
-	if (!NavSys) return EBTNodeResult::Failed;
+	return FleeDirection;
+}
 
-	FNavLocation ProjectedLocation;
-	bool bFoundValidSpot = NavSys->ProjectPointToNavigation(Survivor->GetActorLocation() + FleeDirection * 1000.f, 
-		ProjectedLocation, FVector(100.f, 100.f, 100.f));
-
-	if (bFoundValidSpot)
+void UBT_T_Flee_DitillieuRune::UpdateBlackboardValues(UBlackboardComponent* BlackBoard) const
+{
+	BlackBoard->SetValueAsBool(FName("SensedDanger"), false);
+		
+	if (BlackBoard->GetValueAsBool(FName("SensedItem")) == false 
+		&& BlackBoard->GetValueAsBool(FName("SensedVillage")) == false)
 	{
-		float CurrentStamina{ Survivor->GetComponentByClass<UStaminaComponent>()->GetCurrentStamina() };
-		if (!Survivor->IsRunning() && ShouldRun && CurrentStamina >= 3)
-		{
-			Survivor->StartRunning();
-		}
-		
-		// save energy if almost depleted
-		if (Survivor->IsRunning() && CurrentStamina < 3)
-		{
-			Survivor->StopRunning();
-		}
-		
-		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ProjectedLocation.Location,
-			50.0f, false, true, true, true, 0, true);
-        
-		if (MoveResult != EPathFollowingRequestResult::Type::Failed)
-		{
-			return EBTNodeResult::Succeeded;
-		}
+		BlackBoard->SetValueAsBool(FName("SensedSomething"), false);
 	}
-	
-	return EBTNodeResult::Failed;
 }
