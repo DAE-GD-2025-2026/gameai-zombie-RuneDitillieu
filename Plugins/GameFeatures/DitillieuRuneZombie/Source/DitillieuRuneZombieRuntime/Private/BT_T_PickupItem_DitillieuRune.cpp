@@ -18,9 +18,6 @@ UBT_T_PickupItem_DitillieuRune::UBT_T_PickupItem_DitillieuRune()
 
 EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
-	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
-	FString::Printf(TEXT("Pickup")));
-	
 	// grab survivor
 	AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
@@ -76,7 +73,6 @@ EBTNodeResult::Type UBT_T_PickupItem_DitillieuRune::ExecuteTask(UBehaviorTreeCom
 
 void UBT_T_PickupItem_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Picking up"));
 	// move towards item
 	EPathFollowingRequestResult::Type MoveResult = AIController->MoveToLocation(ItemLocation.Location, 
 		25.0f, false, true, true, true, 0, true);
@@ -131,7 +127,10 @@ void UBT_T_PickupItem_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp,
 					}
 				}
 				
-				InventoryComponent->GrabItem(Idx, ItemToPickup);
+				if (!InventoryComponent->GrabItem(Idx, ItemToPickup))
+				{
+					FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+				}
 			}
 			++Idx;
 		}
@@ -208,13 +207,10 @@ void UBT_T_PickupItem_DitillieuRune::RemoveTripledItems()
 	
 	// check how many items of this type we already had
 	int Idx{ -1 };
-	//UE_LOG(LogTemp, Warning, TEXT("Old Inventory: "));
 	for (auto* OwnedItem : InventoryComponent->GetInventory())
 	{
 		++Idx;
 		if (OwnedItem == nullptr) continue;
-			
-		//UE_LOG(LogTemp, Warning, TEXT("Slot %d : %d"), Idx, OwnedItem->GetValue());
 		
 		if (OwnedItem->GetItemType() == ItemToPickup->GetItemType())
 		{

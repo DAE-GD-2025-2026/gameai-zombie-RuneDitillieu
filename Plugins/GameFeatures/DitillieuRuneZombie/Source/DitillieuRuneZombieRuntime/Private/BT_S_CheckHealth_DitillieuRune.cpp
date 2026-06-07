@@ -33,9 +33,6 @@ void UBT_S_CheckHealth_DitillieuRune::TickNode(UBehaviorTreeComponent& OwnerComp
 		if (!StaminaComponent) return;
 	}
 	
-	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
-	FString::Printf(TEXT("check")));
-	
 	// set boolean when low on health or stamina
 	if (HealthComponent->GetHealth() < 5 || StaminaComponent->GetCurrentStamina() < 4.5f)
 	{

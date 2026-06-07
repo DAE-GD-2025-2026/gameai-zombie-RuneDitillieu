@@ -17,9 +17,6 @@ UBT_T_Aim_DitillieuRune::UBT_T_Aim_DitillieuRune()
 
 EBTNodeResult::Type UBT_T_Aim_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
-	//GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
-	//FString::Printf(TEXT("Aim")));
-	
 	// grab survivor
 	AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
@@ -100,9 +97,6 @@ FVector UBT_T_Aim_DitillieuRune::GetClosestZombieLocation() const
 
 void UBT_T_Aim_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
-	//GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
-	//FString::Printf(TEXT("Aim")));
-	
 	ClosestZombieLoc = GetClosestZombieLocation();
 	
 	FVector2D DirToTarget{ ClosestZombieLoc - Survivor->GetActorLocation() };
@@ -128,9 +122,6 @@ void UBT_T_Aim_DitillieuRune::TickTask(UBehaviorTreeComponent& OwnerComp, uint8*
 	}
 	else
 	{
-		//GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Magenta, 
-		//FString::Printf(TEXT("Rotate")));
-		
 		// continue rotating
 		float DegreesToRotate{ AngleDiff / abs(AngleDiff) * DeltaSeconds * DegreesPerSec };
 		Survivor->AddActorWorldRotation(FRotator(0.0f, DegreesToRotate, 0.0f));

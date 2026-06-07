@@ -13,9 +13,6 @@
 
 EBTNodeResult::Type UBT_T_Flee_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
-	GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, 
-	FString::Printf(TEXT("Flee")));
-	
 	// grab survivor
 	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;

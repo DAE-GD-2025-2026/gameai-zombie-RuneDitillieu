@@ -12,9 +12,6 @@
 
 EBTNodeResult::Type UBT_T_Attack_DitillieuRune::ExecuteTask(UBehaviorTreeComponent& OwnerComponent, uint8* TaskMemory)
 {
-	//GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Red, 
-	//FString::Printf(TEXT("Attack")));
-	
 	// grab survivor
 	AAIController* AIController = OwnerComponent.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
