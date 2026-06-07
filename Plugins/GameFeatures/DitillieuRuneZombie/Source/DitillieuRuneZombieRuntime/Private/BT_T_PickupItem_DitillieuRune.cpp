@@ -220,7 +220,7 @@ void UBT_T_PickupItem_DitillieuRune::RemoveTripledItems()
 	
 	// if we already had more than 1
 	// remove the one with the lowest value if that one is lower than the new one
-	if (ItemsOfThisType.Num() > 1)
+	if (ItemsOfThisType.Num() > 1 || !InventoryComponent->GetInventory().Contains(nullptr))
 	{
 		int LowestValueItem{ -1 };
 		int LowestValue{ 10 };
