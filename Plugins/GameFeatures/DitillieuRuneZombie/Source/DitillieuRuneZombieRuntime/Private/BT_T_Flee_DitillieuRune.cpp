@@ -112,7 +112,7 @@ FVector UBT_T_Flee_DitillieuRune::FleeFromZombies(UBlackboardComponent* BlackBoa
 		Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie1"))));
 		Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie2"))));
 		Zombies.Add(Cast<ABaseZombie>(BlackBoard->GetValueAsObject(FName("ClosestZombie3"))));
-		
+
 		int Idx{ 0 };
 		float ClosestZombieDist{ 2000.f };
 		for (ABaseZombie* Zombie : Zombies)
@@ -123,14 +123,17 @@ FVector UBT_T_Flee_DitillieuRune::FleeFromZombies(UBlackboardComponent* BlackBoa
 				continue;
 			}
 			
-			FVector FleeDir = (Survivor->GetActorLocation() - Zombie->GetActorLocation());
-			float Dist{ float(FleeDir.Length()) };
-			if (Dist < ClosestZombieDist)
+			const float DistToTarget{ static_cast<float>((Zombie->GetActorLocation() - Survivor->GetActorLocation()).Length()) };
+			const float Time{ DistToTarget / 400.f };
+			const FVector PredictedPosition{ Zombie->GetActorLocation() + Zombie->GetActorForwardVector() * Time };
+			FVector FleeDir = Survivor->GetActorLocation() - PredictedPosition;
+			
+			if (DistToTarget < ClosestZombieDist)
 			{
-				ClosestZombieDist = Dist;
+				ClosestZombieDist = DistToTarget;
 			}
 		
-			if (Dist > 1500.f)
+			if (DistToTarget > 1500.f)
 			{
 				switch (Idx)
 				{
@@ -148,7 +151,8 @@ FVector UBT_T_Flee_DitillieuRune::FleeFromZombies(UBlackboardComponent* BlackBoa
 			}
 			else
 			{
-				FleeDir /=  Dist * 1.5f;
+				//FleeDir /=  Dist * 1.5f;
+				FleeDir.Normalize();
 				FleeDirection += FleeDir;
 			}
 			++Idx;
